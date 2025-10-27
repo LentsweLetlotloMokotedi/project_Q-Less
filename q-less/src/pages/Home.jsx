@@ -5,7 +5,7 @@ import QueuePreview from "../components/QueuePreview";
 import FeatureHighlights from "../components/FeatureHighlights";
 import LoginModal from "../components/LoginModal";
 import BookingForm from "../components/BookingForm";
-import videoBg from "../assets/videos/1472191_People_Technology_4096x2160.mp4";
+import videoBg from "../assets/videos/comptry.mp4";
 import { FaAmbulance } from "react-icons/fa";
 
 export default function Home() {
