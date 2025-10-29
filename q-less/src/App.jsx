@@ -50,9 +50,16 @@ function PublicRoute({ children }) {
 
 // ---------------- APP ROUTES ----------------
 export default function App() {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Home user={user} />} />
 
       <Route
         path="/login"

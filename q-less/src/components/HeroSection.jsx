@@ -2,12 +2,12 @@ import React, { useState } from "react";
 import { FaUserClock, FaMobileAlt, FaCheckCircle } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function HeroSection({ onLoginClick }) {
+export default function HeroSection({ onLoginClick, user }) {
   const [showBookingForm, setShowBookingForm] = useState(false);
 
   return (
     <div className="relative flex flex-col items-center justify-center text-center px-6 sm:px-12 md:px-24">
-      {/* Background subtle illustration */}
+      {/* Background illustration */}
       <div className="absolute inset-0 z-0">
         <div className="absolute w-96 h-96 rounded-full bg-blue-500/10 blur-3xl top-10 left-1/4 animate-pulse"></div>
         <div className="absolute w-80 h-80 rounded-full bg-yellow-500/10 blur-3xl bottom-10 right-1/4 animate-pulse"></div>
@@ -23,13 +23,21 @@ export default function HeroSection({ onLoginClick }) {
         </p>
 
         {/* Call-to-action */}
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={onLoginClick}
-            className="px-6 py-3 rounded-full bg-white/10 border border-white/20 hover:bg-white/20 text-white font-medium transition shadow-lg"
-          >
-            Login
-          </button>
+        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
+          {/* If user is logged in, show welcome message */}
+          {user ? (
+            <div className="px-6 py-3 rounded-full bg-white/10 border border-white/20 text-white font-medium shadow-lg">
+              Welcome, {user.displayName || user.email}!
+            </div>
+          ) : (
+            <button
+              onClick={onLoginClick}
+              className="px-6 py-3 rounded-full bg-white/10 border border-white/20 hover:bg-white/20 text-white font-medium transition shadow-lg"
+            >
+              Login
+            </button>
+          )}
+
           <button
             onClick={() => setShowBookingForm(true)}
             className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition shadow-lg shadow-blue-500/30"
@@ -64,11 +72,10 @@ export default function HeroSection({ onLoginClick }) {
         </div>
       </div>
 
-      {/* Animated Booking Modal */}
+      {/* Booking Modal */}
       <AnimatePresence>
         {showBookingForm && (
           <>
-            {/* Background Blur */}
             <motion.div
               className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
               initial={{ opacity: 0 }}
@@ -76,8 +83,6 @@ export default function HeroSection({ onLoginClick }) {
               exit={{ opacity: 0 }}
               onClick={() => setShowBookingForm(false)}
             />
-
-            {/* Booking Form Card */}
             <motion.div
               className="fixed inset-0 flex items-center justify-center z-50 px-4"
               initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -86,19 +91,15 @@ export default function HeroSection({ onLoginClick }) {
               transition={{ type: 'spring', stiffness: 120, damping: 12 }}
             >
               <div className="relative backdrop-blur-2xl bg-white/5 border border-blue-400/30 shadow-[0_0_25px_rgba(0,102,255,0.4)] rounded-3xl p-8 w-full max-w-md text-white">
-                {/* Close Button */}
                 <button
                   className="absolute top-3 right-4 text-white/80 hover:text-white text-2xl"
                   onClick={() => setShowBookingForm(false)}
                 >
                   &times;
                 </button>
-
                 <h2 className="text-2xl font-bold mb-6 text-center text-blue-300">
                   Book a Clinic Queue
                 </h2>
-
-                {/* Form */}
                 <form className="flex flex-col gap-4">
                   <input
                     type="text"

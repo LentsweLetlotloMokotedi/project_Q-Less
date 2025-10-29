@@ -7,7 +7,7 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 export default function LoginForm({ onSuccess, flip, onFlip }) {
@@ -20,18 +20,13 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
-  const from = location.state?.from?.pathname || "/dashboard";
+  const isSignup = flip;
 
-  const isSignup = flip; // Controlled by parent modal
-
-  // Handle Sign In / Sign Up
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Basic validation
     if (!email) {
       setError("Please enter your email.");
       setLoading(false);
@@ -55,32 +50,18 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         await signInWithEmailAndPassword(auth, email, password);
       }
       onSuccess?.();
-      navigate(from, { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Firebase Auth Error:", err);
       let message = "Something went wrong. Please try again.";
       switch (err.code) {
-        case "auth/invalid-email":
-          message = "Please enter a valid email address.";
-          break;
-        case "auth/user-not-found":
-          message = "No account found with that email.";
-          break;
-        case "auth/wrong-password":
-          message = "Incorrect password. Try again.";
-          break;
-        case "auth/email-already-in-use":
-          message = "That email is already registered.";
-          break;
-        case "auth/weak-password":
-          message = "Password must be at least 6 characters long.";
-          break;
-        case "auth/network-request-failed":
-          message = "Network error — check your connection.";
-          break;
-        case "auth/too-many-requests":
-          message = "Too many attempts. Please wait and try again.";
-          break;
+        case "auth/invalid-email": message = "Enter a valid email."; break;
+        case "auth/user-not-found": message = "No account found."; break;
+        case "auth/wrong-password": message = "Incorrect password."; break;
+        case "auth/email-already-in-use": message = "Email already registered."; break;
+        case "auth/weak-password": message = "Password must be 6+ characters."; break;
+        case "auth/network-request-failed": message = "Network error."; break;
+        case "auth/too-many-requests": message = "Too many attempts. Try later."; break;
       }
       setError(message);
     } finally {
@@ -88,17 +69,16 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
     }
   };
 
-  // Google login
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
     try {
       await signInWithPopup(auth, googleProvider);
       onSuccess?.();
-      navigate(from, { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Google Auth Error:", err);
-      setError("Google sign-in failed. Try again.");
+      setError("Google sign-in failed.");
     } finally {
       setLoading(false);
     }
@@ -119,17 +99,15 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
       </p>
 
       <form onSubmit={handleAuth} className="mt-8 flex flex-col gap-4" autoComplete="off">
-        {/* Email */}
         <input
           type="email"
           required
           className="bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-white/70 focus:ring-2 focus:ring-blue-400 outline-none"
-          placeholder="Email address"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        {/* Password */}
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -148,7 +126,6 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
           </button>
         </div>
 
-        {/* Confirm Password for Sign Up */}
         {isSignup && (
           <div className="relative">
             <input
@@ -169,10 +146,8 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
           </div>
         )}
 
-        {/* Error */}
         {error && <p className="text-red-400 text-center text-sm">{error}</p>}
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
@@ -186,12 +161,10 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         </button>
       </form>
 
-      {/* Divider */}
       <div className="mt-6 flex items-center justify-center">
         <span className="text-white/60 text-sm">or</span>
       </div>
 
-      {/* Google Login */}
       <button
         onClick={handleGoogleLogin}
         disabled={loading}
@@ -200,7 +173,6 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         <FcGoogle size={22} /> Continue with Google
       </button>
 
-      {/* Toggle Sign In / Sign Up */}
       <p className="text-center text-white/70 mt-6 text-sm">
         {isSignup ? "Already have an account?" : "Don’t have an account?"}{" "}
         <button

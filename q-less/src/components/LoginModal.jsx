@@ -1,9 +1,10 @@
+// components/LoginModal.jsx
 import { motion, AnimatePresence } from "framer-motion";
 import LoginForm from "../pages/LoginForm";
 import { useState } from "react";
 
 export default function LoginModal({ isOpen, onClose }) {
-  const [flip, setFlip] = useState(false); // Sign In / Sign Up toggle
+  const [flip, setFlip] = useState(false);
 
   const handleFlip = () => setFlip((prev) => !prev);
 
@@ -13,16 +14,16 @@ export default function LoginModal({ isOpen, onClose }) {
         <>
           {/* Dimmed Background */}
           <motion.div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 pointer-events-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Modal Wrapper */}
+          {/* Modal */}
           <motion.div
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-auto"
             initial={{ scale: 0.8, opacity: 0, y: 30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 30 }}
@@ -38,7 +39,7 @@ export default function LoginModal({ isOpen, onClose }) {
                 &times;
               </button>
 
-              {/* Auth Form (Flip Animation) */}
+              {/* Flip Animation */}
               <motion.div
                 key={flip ? "signup" : "signin"}
                 initial={{ rotateY: flip ? 180 : -180, opacity: 0 }}

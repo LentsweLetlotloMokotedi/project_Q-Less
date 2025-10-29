@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
-import { FaCheckCircle, FaPlay } from "react-icons/fa";
+import { FaCheckCircle, FaPlay, FaHome } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
 export default function Dashboard() {
   const audioCtxRef = useRef(null);
+  const navigate = useNavigate();
 
   const [queue, setQueue] = useState(
     Array.from({ length: 16 }, (_, i) => ({
@@ -16,7 +18,6 @@ export default function Dashboard() {
     }))
   );
 
-  // Web Audio bell synth
   const playBell = () => {
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -67,28 +68,30 @@ export default function Dashboard() {
       })
     );
 
-    // Remove bounce highlight after 600ms
     setTimeout(() => {
       setQueue((prev) => prev.map((p) => ({ ...p, animateComplete: false })));
     }, 600);
   };
 
-  // Count completed patients
   const completedCount = queue.filter((p) => p.status === "Completed").length;
   const progressPercent = Math.round((completedCount / queue.length) * 100);
-
-  // Optional filter
   const [filter, setFilter] = useState("All");
-  const visibleQueue =
-    filter === "All" ? queue : queue.filter((p) => p.status === filter);
+  const visibleQueue = filter === "All" ? queue : queue.filter((p) => p.status === filter);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <Navbar />
+
       <div className="p-6 pt-20 max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold mb-4 text-center tracking-wide">
-          Clinic Queue Dashboard
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-4xl font-bold text-center tracking-wide flex-1">Clinic Queue Dashboard</h1>
+          <button
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 rounded-full hover:bg-blue-700 transition"
+          >
+            <FaHome /> Back to Home
+          </button>
+        </div>
 
         {/* Completed counter and progress */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
@@ -124,8 +127,7 @@ export default function Dashboard() {
             const isInProgress = patient.status === "In Progress";
             const isCompleted = patient.status === "Completed";
 
-            const cardBase =
-              "relative p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center transition-all duration-500 transform";
+            const cardBase = "relative p-6 rounded-3xl shadow-lg flex flex-col items-center justify-center transition-all duration-500 transform";
             const cardStyle = isWaiting
               ? "bg-blue-950/50 border border-blue-700"
               : isInProgress
@@ -137,7 +139,6 @@ export default function Dashboard() {
                 key={patient.id}
                 className={`${cardBase} ${cardStyle} ${patient.animateComplete ? "ring-4 ring-green-300" : ""}`}
               >
-                {/* Action Button */}
                 <button
                   onClick={() => cycleStatus(patient.id)}
                   className={`absolute top-3 right-3 p-2 rounded-full transition hover:scale-110 shadow-md ${
@@ -148,14 +149,7 @@ export default function Dashboard() {
                   {isWaiting ? <FaPlay /> : <FaCheckCircle />}
                 </button>
 
-                {/* Avatar */}
-                <img
-                  src={patient.avatar}
-                  alt={patient.name}
-                  className="w-14 h-14 rounded-full border-2 border-white mb-3"
-                />
-
-                {/* Patient Info */}
+                <img src={patient.avatar} alt={patient.name} className="w-14 h-14 rounded-full border-2 border-white mb-3" />
                 <div className="text-lg font-semibold">{patient.name}</div>
                 <div className="text-sm opacity-80">{patient.service}</div>
                 <div className="mt-2 font-bold">{patient.status}</div>
