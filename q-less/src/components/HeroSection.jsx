@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaUserClock, FaMobileAlt, FaCheckCircle } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
 
-export default function HeroSection({ onLoginClick, onBookClick }) {
+export default function HeroSection({ onLoginClick }) {
+  const [showBookingForm, setShowBookingForm] = useState(false);
+
   return (
     <div className="relative flex flex-col items-center justify-center text-center px-6 sm:px-12 md:px-24">
       {/* Background subtle illustration */}
@@ -16,7 +19,7 @@ export default function HeroSection({ onLoginClick, onBookClick }) {
           Q-Less
         </h1>
         <p className="mt-6 text-lg sm:text-xl text-white/80">
-          Skip the line, book services online, and get attended faster. Reduce waiting times and manage your queue digitally.
+          Skip the line, book clinic services online, and get attended faster. Reduce waiting times and manage queues digitally.
         </p>
 
         {/* Call-to-action */}
@@ -28,7 +31,7 @@ export default function HeroSection({ onLoginClick, onBookClick }) {
             Login
           </button>
           <button
-            onClick={onBookClick}
+            onClick={() => setShowBookingForm(true)}
             className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition shadow-lg shadow-blue-500/30"
           >
             Book a Queue
@@ -60,6 +63,75 @@ export default function HeroSection({ onLoginClick, onBookClick }) {
           </div>
         </div>
       </div>
+
+      {/* Animated Booking Modal */}
+      <AnimatePresence>
+        {showBookingForm && (
+          <>
+            {/* Background Blur */}
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowBookingForm(false)}
+            />
+
+            {/* Booking Form Card */}
+            <motion.div
+              className="fixed inset-0 flex items-center justify-center z-50 px-4"
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 120, damping: 12 }}
+            >
+              <div className="relative backdrop-blur-2xl bg-white/5 border border-blue-400/30 shadow-[0_0_25px_rgba(0,102,255,0.4)] rounded-3xl p-8 w-full max-w-md text-white">
+                {/* Close Button */}
+                <button
+                  className="absolute top-3 right-4 text-white/80 hover:text-white text-2xl"
+                  onClick={() => setShowBookingForm(false)}
+                >
+                  &times;
+                </button>
+
+                <h2 className="text-2xl font-bold mb-6 text-center text-blue-300">
+                  Book a Clinic Queue
+                </h2>
+
+                {/* Form */}
+                <form className="flex flex-col gap-4">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    className="p-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Clinic Name"
+                    className="p-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Department (e.g. Check-up, Dental)"
+                    className="p-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                  />
+                  <input
+                    type="time"
+                    className="p-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                  />
+                  <motion.button
+                    type="submit"
+                    whileTap={{ scale: 0.95 }}
+                    className="mt-3 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 shadow-lg shadow-blue-500/30 text-white font-semibold transition"
+                  >
+                    Confirm Booking
+                  </motion.button>
+                </form>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
