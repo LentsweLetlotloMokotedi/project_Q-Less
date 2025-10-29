@@ -1,30 +1,56 @@
 // src/pages/LoginForm.jsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FcGoogle } from "react-icons/fc";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import { auth, googleProvider } from "../firebase"; // adjust path if needed
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
-export default function LoginForm({ onSuccess }) {
+export default function LoginForm({ onSuccess, onFlip, flip }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
+  const [isSignup, setIsSignup] = useState(flip || false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/dashboard";
 
+  // Sync flip state from parent modal
+  useEffect(() => {
+    setIsSignup(flip);
+  }, [flip]);
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Validation
+    if (!email) {
+      setError("Please enter your email.");
+      setLoading(false);
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      setLoading(false);
+      return;
+    }
+    if (isSignup && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isSignup) {
@@ -35,7 +61,34 @@ export default function LoginForm({ onSuccess }) {
       onSuccess?.();
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message);
+      console.error("🔥 Firebase Auth Error:", err);
+      let message;
+      switch (err.code) {
+        case "auth/invalid-email":
+          message = "Please enter a valid email address.";
+          break;
+        case "auth/user-not-found":
+          message = "No account found with that email.";
+          break;
+        case "auth/wrong-password":
+          message = "Incorrect password. Try again.";
+          break;
+        case "auth/email-already-in-use":
+          message = "That email is already registered.";
+          break;
+        case "auth/weak-password":
+          message = "Password must be at least 6 characters long.";
+          break;
+        case "auth/network-request-failed":
+          message = "Network error — check your connection.";
+          break;
+        case "auth/too-many-requests":
+          message = "Too many attempts. Please wait and try again.";
+          break;
+        default:
+          message = "Something went wrong. Please try again.";
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -49,14 +102,20 @@ export default function LoginForm({ onSuccess }) {
       onSuccess?.();
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message);
+      console.error("🔥 Google Auth Error:", err);
+      setError("Google sign-in failed. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Toggle between Sign In / Sign Up
+  const handleToggle = () => {
+    onFlip?.();
+  };
+
   return (
-    <div>
+    <div style={{ backfaceVisibility: "hidden" }}>
       <motion.h2
         className="text-3xl font-bold text-center text-white"
         initial={{ opacity: 0, y: -10 }}
@@ -74,6 +133,7 @@ export default function LoginForm({ onSuccess }) {
         className="mt-8 flex flex-col gap-4"
         autoComplete="off"
       >
+        {/* Email */}
         <input
           type="email"
           required
@@ -83,14 +143,45 @@ export default function LoginForm({ onSuccess }) {
           onChange={(e) => setEmail(e.target.value)}
         />
 
-        <input
-          type="password"
-          required
-          className="bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-white/70 focus:ring-2 focus:ring-blue-400 outline-none"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        {/* Password */}
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            required
+            className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-white/70 focus:ring-2 focus:ring-blue-400 outline-none pr-10"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+          >
+            {showPassword ? <FaEyeSlash /> : <FaEye />}
+          </button>
+        </div>
+
+        {/* Confirm Password only for Sign Up */}
+        {isSignup && (
+          <div className="relative">
+            <input
+              type={showConfirm ? "text" : "password"}
+              required
+              className="w-full bg-white/20 border border-white/30 rounded-lg px-4 py-3 text-white placeholder-white/70 focus:ring-2 focus:ring-blue-400 outline-none pr-10"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white"
+            >
+              {showConfirm ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="text-red-400 text-center text-sm">{error}</p>
@@ -111,10 +202,12 @@ export default function LoginForm({ onSuccess }) {
         </button>
       </form>
 
+      {/* Divider */}
       <div className="mt-6 flex items-center justify-center">
         <span className="text-white/60 text-sm">or</span>
       </div>
 
+      {/* Google Login */}
       <button
         onClick={handleGoogleLogin}
         disabled={loading}
@@ -123,11 +216,12 @@ export default function LoginForm({ onSuccess }) {
         <FcGoogle size={22} /> Continue with Google
       </button>
 
+      {/* Toggle Sign In / Sign Up */}
       <p className="text-center text-white/70 mt-6 text-sm">
         {isSignup ? "Already have an account?" : "Don’t have an account?"}{" "}
         <button
           type="button"
-          onClick={() => setIsSignup(!isSignup)}
+          onClick={handleToggle}
           className="text-blue-400 hover:text-blue-300 underline font-medium"
         >
           {isSignup ? "Sign In" : "Sign Up"}
