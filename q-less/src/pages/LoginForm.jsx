@@ -1,5 +1,4 @@
-// src/pages/LoginForm.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import {
@@ -7,16 +6,15 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
-import { auth, googleProvider } from "../firebase"; // adjust path if needed
+import { auth, googleProvider } from "../firebase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
-export default function LoginForm({ onSuccess, onFlip, flip }) {
+export default function LoginForm({ onSuccess, flip, onFlip }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(flip || false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,17 +23,15 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
   const location = useLocation();
   const from = location.state?.from?.pathname || "/dashboard";
 
-  // Sync flip state from parent modal
-  useEffect(() => {
-    setIsSignup(flip);
-  }, [flip]);
+  const isSignup = flip; // Controlled by parent modal
 
+  // Handle Sign In / Sign Up
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Validation
+    // Basic validation
     if (!email) {
       setError("Please enter your email.");
       setLoading(false);
@@ -61,8 +57,8 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
       onSuccess?.();
       navigate(from, { replace: true });
     } catch (err) {
-      console.error("🔥 Firebase Auth Error:", err);
-      let message;
+      console.error("Firebase Auth Error:", err);
+      let message = "Something went wrong. Please try again.";
       switch (err.code) {
         case "auth/invalid-email":
           message = "Please enter a valid email address.";
@@ -85,8 +81,6 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
         case "auth/too-many-requests":
           message = "Too many attempts. Please wait and try again.";
           break;
-        default:
-          message = "Something went wrong. Please try again.";
       }
       setError(message);
     } finally {
@@ -94,6 +88,7 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
     }
   };
 
+  // Google login
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
@@ -102,16 +97,11 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
       onSuccess?.();
       navigate(from, { replace: true });
     } catch (err) {
-      console.error("🔥 Google Auth Error:", err);
+      console.error("Google Auth Error:", err);
       setError("Google sign-in failed. Try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  // Toggle between Sign In / Sign Up
-  const handleToggle = () => {
-    onFlip?.();
   };
 
   return (
@@ -128,11 +118,7 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
         {isSignup ? "Join Q-Less today" : "Sign in to continue"}
       </p>
 
-      <form
-        onSubmit={handleAuth}
-        className="mt-8 flex flex-col gap-4"
-        autoComplete="off"
-      >
+      <form onSubmit={handleAuth} className="mt-8 flex flex-col gap-4" autoComplete="off">
         {/* Email */}
         <input
           type="email"
@@ -162,7 +148,7 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
           </button>
         </div>
 
-        {/* Confirm Password only for Sign Up */}
+        {/* Confirm Password for Sign Up */}
         {isSignup && (
           <div className="relative">
             <input
@@ -183,19 +169,17 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
           </div>
         )}
 
-        {error && (
-          <p className="text-red-400 text-center text-sm">{error}</p>
-        )}
+        {/* Error */}
+        {error && <p className="text-red-400 text-center text-sm">{error}</p>}
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
           className="bg-blue-600 hover:bg-blue-700 transition text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? (
-            <motion.div
-              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"
-            />
+            <motion.div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
             <>{isSignup ? "Sign Up" : "Sign In"}</>
           )}
@@ -221,7 +205,7 @@ export default function LoginForm({ onSuccess, onFlip, flip }) {
         {isSignup ? "Already have an account?" : "Don’t have an account?"}{" "}
         <button
           type="button"
-          onClick={handleToggle}
+          onClick={onFlip}
           className="text-blue-400 hover:text-blue-300 underline font-medium"
         >
           {isSignup ? "Sign In" : "Sign Up"}
