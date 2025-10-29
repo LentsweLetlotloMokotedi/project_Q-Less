@@ -19,7 +19,7 @@ export default function QueuePreview({ queue }) {
     <section className="relative w-full px-6 py-16 overflow-hidden">
       {/* Background Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center brightness-75 blur-sm"
+        className="absolute inset-0 bg-cover bg-center brightness-75 blur-xs"
         style={{ backgroundImage: `url(${backdropImage})` }}
       ></div>
 
