@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import {
+  FaEye,
+  FaEyeSlash,
+  FaUserMd,
+  FaUserNurse,
+  FaUser,
+  FaUserCog,
+} from "react-icons/fa";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -18,6 +25,7 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [role, setRole] = useState("");
 
   const navigate = useNavigate();
   const isSignup = flip;
@@ -55,13 +63,27 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
       console.error("Firebase Auth Error:", err);
       let message = "Something went wrong. Please try again.";
       switch (err.code) {
-        case "auth/invalid-email": message = "Enter a valid email."; break;
-        case "auth/user-not-found": message = "No account found."; break;
-        case "auth/wrong-password": message = "Incorrect password."; break;
-        case "auth/email-already-in-use": message = "Email already registered."; break;
-        case "auth/weak-password": message = "Password must be 6+ characters."; break;
-        case "auth/network-request-failed": message = "Network error."; break;
-        case "auth/too-many-requests": message = "Too many attempts. Try later."; break;
+        case "auth/invalid-email":
+          message = "Enter a valid email.";
+          break;
+        case "auth/user-not-found":
+          message = "No account found.";
+          break;
+        case "auth/wrong-password":
+          message = "Incorrect password.";
+          break;
+        case "auth/email-already-in-use":
+          message = "Email already registered.";
+          break;
+        case "auth/weak-password":
+          message = "Password must be 6+ characters.";
+          break;
+        case "auth/network-request-failed":
+          message = "Network error.";
+          break;
+        case "auth/too-many-requests":
+          message = "Too many attempts. Try later.";
+          break;
       }
       setError(message);
     } finally {
@@ -84,21 +106,84 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
     }
   };
 
+  // ✅ Role Selection Step
+  if (!role) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <h2
+          className="text-3xl font-extrabold mb-4 text-white"
+          style={{ fontFamily: "'Cinzel Decorative', cursive" }}
+        >
+          Who are you?
+        </h2>
+        <p
+          className="text-white/70 mb-6"
+          style={{ fontFamily: "'Kaushan Script', cursive" }}
+        >
+          Choose your role to continue
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            {
+              label: "Patient",
+              icon: <FaUser className="text-blue-400 text-2xl" />,
+            },
+            {
+              label: "Nurse",
+              icon: <FaUserNurse className="text-green-400 text-2xl" />,
+            },
+            {
+              label: "Doctor",
+              icon: <FaUserMd className="text-yellow-400 text-2xl" />,
+            },
+            {
+              label: "Admin",
+              icon: <FaUserCog className="text-red-400 text-2xl" />,
+            },
+          ].map(({ label, icon }) => (
+            <button
+              key={label}
+              onClick={() => setRole(label)}
+              className="flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl py-4 transition-all"
+              style={{ fontFamily: "'Cinzel Decorative', cursive" }}
+            >
+              {icon}
+              <span className="mt-2 font-semibold">{label}</span>
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // ✅ Login/Signup Step
   return (
     <div style={{ backfaceVisibility: "hidden" }}>
       <motion.h2
-        className="text-3xl font-bold text-center text-white"
+        className="text-3xl font-extrabold text-center text-white"
+        style={{ fontFamily: "'Cinzel Decorative', cursive" }}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        {isSignup ? "Create Account" : "Welcome Back"}
+        {isSignup ? `Create ${role} Account` : `${role} Login`}
       </motion.h2>
 
-      <p className="text-white/70 text-center mt-2">
-        {isSignup ? "Join Q-Less today" : "Sign in to continue"}
+      <p
+        className="text-white/70 text-center mt-2"
+        style={{ fontFamily: "'Kaushan Script', cursive" }}
+      >
+        {isSignup ? `Join Q-Less as a ${role}` : `Sign in as ${role}`}
       </p>
 
-      <form onSubmit={handleAuth} className="mt-8 flex flex-col gap-4" autoComplete="off">
+      <form
+        onSubmit={handleAuth}
+        className="mt-8 flex flex-col gap-4"
+        autoComplete="off"
+      >
         <input
           type="email"
           required
@@ -151,7 +236,8 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 transition text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+          className="bg-blue-600 hover:bg-blue-700 transition text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+          style={{ fontFamily: "'Cinzel Decorative', cursive" }}
         >
           {loading ? (
             <motion.div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -173,7 +259,10 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         <FcGoogle size={22} /> Continue with Google
       </button>
 
-      <p className="text-center text-white/70 mt-6 text-sm">
+      <p
+        className="text-center text-white/70 mt-6 text-sm"
+        style={{ fontFamily: "'Kaushan Script', cursive" }}
+      >
         {isSignup ? "Already have an account?" : "Don’t have an account?"}{" "}
         <button
           type="button"
@@ -183,6 +272,15 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
           {isSignup ? "Sign In" : "Sign Up"}
         </button>
       </p>
+
+      <button
+        type="button"
+        onClick={() => setRole("")}
+        className="mt-4 text-white/60 text-sm hover:text-white underline"
+        style={{ fontFamily: "'Kaushan Script', cursive" }}
+      >
+        ← Change Role
+      </button>
     </div>
   );
 }
