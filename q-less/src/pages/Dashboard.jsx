@@ -4,9 +4,19 @@ import { FaCheckCircle, FaPlay, FaHome } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Navbar from "../components/Navbar";
+import RoleSelectModal from "../components/RoleSelectModal";
 import karolaBg from "../assets/images/pexels-karola-g-4047186.jpg";
 import { auth, db } from "../firebase";
-import { collection, onSnapshot, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDoc,
+  setDoc,
+  query,
+  orderBy,
+} from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 export default function Dashboard() {
@@ -16,13 +26,21 @@ export default function Dashboard() {
   const [queue, setQueue] = useState([]);
   const [role, setRole] = useState(null);
   const [filter, setFilter] = useState("All");
+  const [loading, setLoading] = useState(true); // ✅ loading state
 
   // Load user role
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) return navigate("/login");
-      const docSnap = await (await import("firebase/firestore")).getDoc(doc(db, "users", user.uid));
-      if (docSnap.exists()) setRole(docSnap.data().role);
+      try {
+        const docSnap = await getDoc(doc(db, "users", user.uid));
+        if (docSnap.exists()) setRole(docSnap.data().role);
+        else setRole(null);
+      } catch (err) {
+        console.error("Error fetching role:", err);
+      } finally {
+        setLoading(false); // ✅ stop spinner once done
+      }
     });
     return unsubscribeAuth;
   }, [navigate]);
@@ -39,7 +57,9 @@ export default function Dashboard() {
 
   const playBell = () => {
     try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (!audioCtxRef.current)
+        audioCtxRef.current = new (window.AudioContext ||
+          window.webkitAudioContext)();
       const ctx = audioCtxRef.current;
       const now = ctx.currentTime;
 
@@ -69,14 +89,19 @@ export default function Dashboard() {
     }
   };
 
-  const getTargetProgress = (status) => (status === "Waiting" ? 0 : status === "In Progress" ? 50 : 100);
+  const getTargetProgress = (status) =>
+    status === "Waiting" ? 0 : status === "In Progress" ? 50 : 100;
 
   // Only staff can update status
   const cycleStatus = async (id, currentStatus) => {
     if (role === "Patient") return; // Patients cannot update
 
     const newStatus =
-      currentStatus === "Waiting" ? "In Progress" : currentStatus === "In Progress" ? "Completed" : "Waiting";
+      currentStatus === "Waiting"
+        ? "In Progress"
+        : currentStatus === "In Progress"
+        ? "Completed"
+        : "Waiting";
 
     if (newStatus === "Completed") playBell();
 
@@ -85,7 +110,8 @@ export default function Dashboard() {
 
   const completedCount = queue.filter((p) => p.status === "Completed").length;
   const progressPercent = Math.round((completedCount / queue.length) * 100);
-  const visibleQueue = filter === "All" ? queue : queue.filter((p) => p.status === filter);
+  const visibleQueue =
+    filter === "All" ? queue : queue.filter((p) => p.status === filter);
 
   function PatientCard({ patient }) {
     const isCompleted = patient.status === "Completed";
@@ -94,7 +120,9 @@ export default function Dashboard() {
     const motionVal = useMotionValue(getTargetProgress(patient.status));
     const smooth = useSpring(motionVal, { stiffness: 200, damping: 25 });
 
-    useEffect(() => motionVal.set(getTargetProgress(patient.status)), [patient.status]);
+    useEffect(() => motionVal.set(getTargetProgress(patient.status)), [
+      patient.status,
+    ]);
 
     const gradient = useTransform(smooth, (p) => {
       if (isCompleted) return "conic-gradient(green 0deg, green 360deg)";
@@ -108,7 +136,11 @@ export default function Dashboard() {
     return (
       <article
         className={`relative flex flex-col items-center p-6 rounded-3xl shadow-lg backdrop-blur-md border border-white/20 transition-all duration-500 hover:-translate-y-1 hover:scale-105 ${
-          isCompleted ? "bg-green-500 text-white shadow-green-500/50" : isInProgress ? "bg-yellow-400 text-white animate-pulse shadow-yellow-300/50" : "bg-white/10 text-white"
+          isCompleted
+            ? "bg-green-500 text-white shadow-green-500/50"
+            : isInProgress
+            ? "bg-yellow-400 text-white animate-pulse shadow-yellow-300/50"
+            : "bg-white/10 text-white"
         }`}
       >
         {/* Staff Controls */}
@@ -116,9 +148,15 @@ export default function Dashboard() {
           <button
             onClick={() => cycleStatus(patient.id, patient.status)}
             className={`absolute top-3 right-3 p-2 rounded-full transition hover:scale-110 shadow-md ${
-              isCompleted ? "bg-gray-800" : isInProgress ? "bg-green-800" : "bg-blue-600"
+              isCompleted
+                ? "bg-gray-800"
+                : isInProgress
+                ? "bg-green-800"
+                : "bg-blue-600"
             } text-white`}
-            title={isInProgress ? "Complete" : isCompleted ? "Undo" : "Start"}
+            title={
+              isInProgress ? "Complete" : isCompleted ? "Undo" : "Start"
+            }
           >
             {patient.status === "Waiting" ? <FaPlay /> : <FaCheckCircle />}
           </button>
@@ -127,13 +165,29 @@ export default function Dashboard() {
         <div className="relative mb-3 w-20 h-20">
           <div className="absolute inset-0 rounded-full bg-red-500" />
           <motion.div
-            className={`absolute inset-0 rounded-full ${isCompleted ? "ring-4 ring-green-400 animate-pulse" : ""}`}
-            style={{ background: gradient, clipPath: "circle(50%)", transformOrigin: "50% 50%" }}
+            className={`absolute inset-0 rounded-full ${
+              isCompleted ? "ring-4 ring-green-400 animate-pulse" : ""
+            }`}
+            style={{
+              background: gradient,
+              clipPath: "circle(50%)",
+              transformOrigin: "50% 50%",
+            }}
             animate={isInProgress ? { rotate: 360 } : { rotate: 0 }}
-            transition={isInProgress ? { repeat: Infinity, duration: 6, ease: "linear" } : { duration: 0.3 }}
+            transition={
+              isInProgress
+                ? { repeat: Infinity, duration: 6, ease: "linear" }
+                : { duration: 0.3 }
+            }
           />
-          {isCompleted && <span className="absolute top-0 left-0 w-20 h-20 rounded-full border-4 border-green-400 animate-ping" />}
-          <img src={patient.avatar} alt={patient.name} className="absolute top-2 left-2 w-16 h-16 rounded-full border-2 border-white" />
+          {isCompleted && (
+            <span className="absolute top-0 left-0 w-20 h-20 rounded-full border-4 border-green-400 animate-ping" />
+          )}
+          <img
+            src={patient.avatar}
+            alt={patient.name}
+            className="absolute top-2 left-2 w-16 h-16 rounded-full border-2 border-white"
+          />
         </div>
 
         <p className="text-lg font-semibold">{patient.name}</p>
@@ -146,11 +200,15 @@ export default function Dashboard() {
 
   return (
     <section className="relative w-full min-h-screen overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center brightness-75 blur-sm" style={{ backgroundImage: `url(${karolaBg})` }}></div>
+      <div
+        className="absolute inset-0 bg-cover bg-center brightness-75 blur-sm"
+        style={{ backgroundImage: `url(${karolaBg})` }}
+      ></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/20"></div>
 
       <Navbar />
 
+      {/* 🏠 Home button */}
       <button
         onClick={() => navigate("/")}
         className="fixed top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 backdrop-blur-md text-white rounded-full shadow-lg hover:bg-white/20 hover:scale-105 transition-all duration-300"
@@ -159,13 +217,28 @@ export default function Dashboard() {
         <span className="hidden sm:block font-semibold">Home</span>
       </button>
 
+      {/* 🌀 Loading Spinner */}
+      {loading && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md z-[999]">
+          <div className="w-14 h-14 border-4 border-white/20 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {/* Main content */}
       <div className="relative z-10 p-6 pt-24 max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8">Clinic Queue Dashboard</h1>
+        <h1 className="text-4xl font-bold text-center mb-8">
+          Clinic Queue Dashboard
+        </h1>
 
         <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-          <p className="text-lg font-semibold">Completed Patients: {completedCount} / {queue.length}</p>
+          <p className="text-lg font-semibold">
+            Completed Patients: {completedCount} / {queue.length}
+          </p>
           <div className="w-full md:w-1/3 h-4 bg-gray-700/60 rounded-full overflow-hidden">
-            <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+            <div
+              className="h-full bg-green-500 transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
 
@@ -173,7 +246,11 @@ export default function Dashboard() {
           {["All", "Waiting", "In Progress", "Completed"].map((f) => (
             <button
               key={f}
-              className={`px-4 py-2 rounded-full border ${filter === f ? "bg-blue-600 border-blue-700" : "bg-gray-800/70 border-gray-600"}`}
+              className={`px-4 py-2 rounded-full border ${
+                filter === f
+                  ? "bg-blue-600 border-blue-700"
+                  : "bg-gray-800/70 border-gray-600"
+              }`}
               onClick={() => setFilter(f)}
             >
               {f}
@@ -182,11 +259,28 @@ export default function Dashboard() {
         </div>
 
         <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 z-10">
-          {visibleQueue.map((p) => <PatientCard key={p.id} patient={p} />)}
+          {visibleQueue.map((p) => (
+            <PatientCard key={p.id} patient={p} />
+          ))}
         </div>
       </div>
 
-      <p className="absolute bottom-2 left-2 text-[10px] text-white/40 z-10">Image by Karola G</p>
+      <p className="absolute bottom-2 left-2 text-[10px] text-white/40 z-10">
+        Image by Karola G
+      </p>
+
+      {/* 🌟 Role selection modal */}
+      {!loading && !role && (
+        <RoleSelectModal
+          onSelect={async (selectedRole) => {
+            const user = auth.currentUser;
+            if (user) {
+              await setDoc(doc(db, "users", user.uid), { role: selectedRole });
+              setRole(selectedRole);
+            }
+          }}
+        />
+      )}
     </section>
   );
 }
