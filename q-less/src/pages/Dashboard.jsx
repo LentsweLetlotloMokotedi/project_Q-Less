@@ -1,25 +1,48 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FaCheckCircle, FaPlay, FaHome } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { auth, db } from "../utils/firebase";
 import Navbar from "../components/Navbar";
 import karolaBg from "../assets/images/pexels-karola-g-4047186.jpg";
+import { auth, db } from "../firebase";
+import { collection, onSnapshot, doc, updateDoc, query, orderBy } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
-export default function Dashboard({ userRole }) {
+export default function Dashboard() {
   const audioCtxRef = useRef(null);
   const navigate = useNavigate();
+
   const [queue, setQueue] = useState([]);
+  const [role, setRole] = useState(null);
   const [filter, setFilter] = useState("All");
 
-  // Play bell sound
+  // Load user role
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) return navigate("/login");
+      const docSnap = await (await import("firebase/firestore")).getDoc(doc(db, "users", user.uid));
+      if (docSnap.exists()) setRole(docSnap.data().role);
+    });
+    return unsubscribeAuth;
+  }, [navigate]);
+
+  // Load live queue from Firestore
+  useEffect(() => {
+    const q = query(collection(db, "queues"), orderBy("createdAt"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      setQueue(data);
+    });
+    return unsubscribe;
+  }, []);
+
   const playBell = () => {
     try {
       if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       const ctx = audioCtxRef.current;
       const now = ctx.currentTime;
+
       const osc1 = ctx.createOscillator();
       const osc2 = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -46,29 +69,18 @@ export default function Dashboard({ userRole }) {
     }
   };
 
-  // Load queue from Firestore in real-time
-  useEffect(() => {
-    const queueRef = collection(db, "queue");
-    const unsubscribe = onSnapshot(queueRef, (snapshot) => {
-      const q = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setQueue(q);
-    });
-    return unsubscribe;
-  }, []);
+  const getTargetProgress = (status) => (status === "Waiting" ? 0 : status === "In Progress" ? 50 : 100);
 
-  // Only non-patient can update status
-  const cycleStatus = async (patientId) => {
-    if (userRole === "Patient") return;
-    const patientDoc = doc(db, "queue", patientId);
-    const patient = queue.find((p) => p.id === patientId);
-    if (!patient) return;
+  // Only staff can update status
+  const cycleStatus = async (id, currentStatus) => {
+    if (role === "Patient") return; // Patients cannot update
 
     const newStatus =
-      patient.status === "Waiting" ? "In Progress" :
-      patient.status === "In Progress" ? "Completed" : "Waiting";
+      currentStatus === "Waiting" ? "In Progress" : currentStatus === "In Progress" ? "Completed" : "Waiting";
 
     if (newStatus === "Completed") playBell();
-    await updateDoc(patientDoc, { status: newStatus });
+
+    await updateDoc(doc(db, "queues", id), { status: newStatus });
   };
 
   const completedCount = queue.filter((p) => p.status === "Completed").length;
@@ -78,9 +90,11 @@ export default function Dashboard({ userRole }) {
   function PatientCard({ patient }) {
     const isCompleted = patient.status === "Completed";
     const isInProgress = patient.status === "In Progress";
-    const motionVal = useMotionValue(patient.progress || 0);
+
+    const motionVal = useMotionValue(getTargetProgress(patient.status));
     const smooth = useSpring(motionVal, { stiffness: 200, damping: 25 });
-    useEffect(() => motionVal.set(patient.progress || 0), [patient.progress]);
+
+    useEffect(() => motionVal.set(getTargetProgress(patient.status)), [patient.status]);
 
     const gradient = useTransform(smooth, (p) => {
       if (isCompleted) return "conic-gradient(green 0deg, green 360deg)";
@@ -94,14 +108,13 @@ export default function Dashboard({ userRole }) {
     return (
       <article
         className={`relative flex flex-col items-center p-6 rounded-3xl shadow-lg backdrop-blur-md border border-white/20 transition-all duration-500 hover:-translate-y-1 hover:scale-105 ${
-          isCompleted ? "bg-green-500 text-white shadow-green-500/50" :
-          isInProgress ? "bg-yellow-400 text-white animate-pulse shadow-yellow-300/50" :
-          "bg-white/10 text-white"
+          isCompleted ? "bg-green-500 text-white shadow-green-500/50" : isInProgress ? "bg-yellow-400 text-white animate-pulse shadow-yellow-300/50" : "bg-white/10 text-white"
         }`}
       >
-        {userRole !== "Patient" && (
+        {/* Staff Controls */}
+        {role !== "Patient" && (
           <button
-            onClick={() => cycleStatus(patient.id)}
+            onClick={() => cycleStatus(patient.id, patient.status)}
             className={`absolute top-3 right-3 p-2 rounded-full transition hover:scale-110 shadow-md ${
               isCompleted ? "bg-gray-800" : isInProgress ? "bg-green-800" : "bg-blue-600"
             } text-white`}
@@ -133,7 +146,7 @@ export default function Dashboard({ userRole }) {
 
   return (
     <section className="relative w-full min-h-screen overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center brightness-75 blur-sm" style={{ backgroundImage: `url(${karolaBg})` }} />
+      <div className="absolute inset-0 bg-cover bg-center brightness-75 blur-sm" style={{ backgroundImage: `url(${karolaBg})` }}></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/20"></div>
 
       <Navbar />
@@ -148,6 +161,7 @@ export default function Dashboard({ userRole }) {
 
       <div className="relative z-10 p-6 pt-24 max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-center mb-8">Clinic Queue Dashboard</h1>
+
         <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
           <p className="text-lg font-semibold">Completed Patients: {completedCount} / {queue.length}</p>
           <div className="w-full md:w-1/3 h-4 bg-gray-700/60 rounded-full overflow-hidden">
@@ -155,14 +169,11 @@ export default function Dashboard({ userRole }) {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="flex gap-2 mb-6 flex-wrap justify-center">
           {["All", "Waiting", "In Progress", "Completed"].map((f) => (
             <button
               key={f}
-              className={`px-4 py-2 rounded-full border ${
-                filter === f ? "bg-blue-600 border-blue-700" : "bg-gray-800/70 border-gray-600"
-              }`}
+              className={`px-4 py-2 rounded-full border ${filter === f ? "bg-blue-600 border-blue-700" : "bg-gray-800/70 border-gray-600"}`}
               onClick={() => setFilter(f)}
             >
               {f}
@@ -170,7 +181,6 @@ export default function Dashboard({ userRole }) {
           ))}
         </div>
 
-        {/* Queue Cards */}
         <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 z-10">
           {visibleQueue.map((p) => <PatientCard key={p.id} patient={p} />)}
         </div>
