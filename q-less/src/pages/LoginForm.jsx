@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+// src/pages/LoginForm.jsx
+
+import React, { useState, useEffect } from "react";
 import { FcGoogle } from "react-icons/fc";
 import {
   FaEye,
@@ -11,9 +13,12 @@ import {
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
-import { auth, googleProvider } from "../firebase";
+import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -30,6 +35,7 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
   const navigate = useNavigate();
   const isSignup = flip;
 
+  // Handle Email/Password login/signup
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -91,22 +97,48 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
     }
   };
 
+  // Handle Google login (popup with account selection)
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError("");
     try {
-      await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" }); // Forces account selection
+      await signInWithPopup(auth, provider);
       onSuccess?.();
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Google Auth Error:", err);
-      setError("Google sign-in failed.");
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Login canceled. Please try again.");
+      } else {
+        setError("Google sign-in failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Role Selection Step
+  // Optional: Handle Google redirect login (more reliable in some browsers)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          onSuccess?.();
+          navigate("/dashboard", { replace: true });
+        }
+      })
+      .catch((err) => {
+        console.error("Google Redirect Error:", err);
+        if (err.code === "auth/popup-closed-by-user") {
+          setError("Login canceled. Please try again.");
+        } else {
+          setError("Google login failed. Please try again.");
+        }
+      });
+  }, []);
+
+  // Role selection screen
   if (!role) {
     return (
       <motion.div
@@ -128,22 +160,10 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
         </p>
         <div className="grid grid-cols-2 gap-4">
           {[
-            {
-              label: "Patient",
-              icon: <FaUser className="text-blue-400 text-2xl" />,
-            },
-            {
-              label: "Nurse",
-              icon: <FaUserNurse className="text-green-400 text-2xl" />,
-            },
-            {
-              label: "Doctor",
-              icon: <FaUserMd className="text-yellow-400 text-2xl" />,
-            },
-            {
-              label: "Admin",
-              icon: <FaUserCog className="text-red-400 text-2xl" />,
-            },
+            { label: "Patient", icon: <FaUser className="text-blue-400 text-2xl" /> },
+            { label: "Nurse", icon: <FaUserNurse className="text-green-400 text-2xl" /> },
+            { label: "Doctor", icon: <FaUserMd className="text-yellow-400 text-2xl" /> },
+            { label: "Admin", icon: <FaUserCog className="text-red-400 text-2xl" /> },
           ].map(({ label, icon }) => (
             <button
               key={label}
@@ -160,7 +180,7 @@ export default function LoginForm({ onSuccess, flip, onFlip }) {
     );
   }
 
-  // ✅ Login/Signup Step
+  // Login/signup form
   return (
     <div style={{ backfaceVisibility: "hidden" }}>
       <motion.h2

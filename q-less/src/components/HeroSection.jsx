@@ -62,7 +62,7 @@ export default function HeroSection({ onLoginClick, user }) {
           </button>
         </div>
 
-        {/* Feature Cards (Responsive Squares) */}
+
 {/* Feature Cards (Responsive Squares) */}
 <div className="mt-12 sm:mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 place-items-center">
   {[

@@ -3,23 +3,12 @@ import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase";
 import Home from "./pages/Home";
-import LoginForm from "./pages/LoginForm";
 import Dashboard from "./pages/Dashboard";
+import LoginPage from "./pages/LoginPage";
 import qlessLogo from "./assets/images/Q-Less-Logo1.png";
 
 // ---------------- GLOBAL LOADER ----------------
 function GlobalLoader() {
-  const [loading, setLoading] = useState(false);
-  const location = useLocation();
-
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, [location]);
-
-  if (!loading) return null;
-
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-50 transition-opacity">
       <img
@@ -88,32 +77,42 @@ function HomeRoute() {
 
 // ---------------- MAIN APP ----------------
 export default function App() {
+  const [appReady, setAppReady] = useState(false);
+  const location = useLocation();
+
+  // ✅ Short delay before showing content (prevents footer flash)
+  useEffect(() => {
+    setAppReady(false);
+    const timer = setTimeout(() => setAppReady(true), 900);
+    return () => clearTimeout(timer);
+  }, [location]);
+
+  if (!appReady) return <GlobalLoader />;
+
   return (
-    <>
-      <GlobalLoader />
-      <Routes>
-        <Route path="/" element={<HomeRoute />} />
-
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <LoginForm />
-            </PublicRoute>
-          }
-        />
-
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </>
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-grow">
+        <Routes>
+          <Route path="/" element={<HomeRoute />} />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </main>
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import Navbar from "../components/Navbar";
 import RoleSelectModal from "../components/RoleSelectModal";
+import BookingForm from "../components/BookingForm";
 import karolaBg from "../assets/images/pexels-karola-g-4047186.jpg";
 import { auth, db } from "../firebase";
 import {
@@ -26,7 +27,8 @@ export default function Dashboard() {
   const [queue, setQueue] = useState([]);
   const [role, setRole] = useState(null);
   const [filter, setFilter] = useState("All");
-  const [loading, setLoading] = useState(true); // ✅ loading state
+  const [loading, setLoading] = useState(true);
+  const [showBookingForm, setShowBookingForm] = useState(false);
 
   // Load user role
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function Dashboard() {
       } catch (err) {
         console.error("Error fetching role:", err);
       } finally {
-        setLoading(false); // ✅ stop spinner once done
+        setLoading(false);
       }
     });
     return unsubscribeAuth;
@@ -49,7 +51,25 @@ export default function Dashboard() {
   useEffect(() => {
     const q = query(collection(db, "queues"), orderBy("createdAt"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // Calculate positions per clinic
+      const clinicGroups = {};
+      data.forEach((item) => {
+        if (item.status === "Waiting") {
+          if (!clinicGroups[item.clinic]) clinicGroups[item.clinic] = [];
+          clinicGroups[item.clinic].push(item);
+        }
+      });
+
+      data = data.map((item) => {
+        if (item.status === "Waiting") {
+          const pos = clinicGroups[item.clinic].findIndex((p) => p.id === item.id) + 1;
+          return { ...item, position: pos };
+        }
+        return { ...item, position: null };
+      });
+
       setQueue(data);
     });
     return unsubscribe;
@@ -58,8 +78,7 @@ export default function Dashboard() {
   const playBell = () => {
     try {
       if (!audioCtxRef.current)
-        audioCtxRef.current = new (window.AudioContext ||
-          window.webkitAudioContext)();
+        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       const ctx = audioCtxRef.current;
       const now = ctx.currentTime;
 
@@ -92,9 +111,8 @@ export default function Dashboard() {
   const getTargetProgress = (status) =>
     status === "Waiting" ? 0 : status === "In Progress" ? 50 : 100;
 
-  // Only staff can update status
   const cycleStatus = async (id, currentStatus) => {
-    if (role === "Patient") return; // Patients cannot update
+    if (role === "Patient") return;
 
     const newStatus =
       currentStatus === "Waiting"
@@ -154,9 +172,7 @@ export default function Dashboard() {
                 ? "bg-green-800"
                 : "bg-blue-600"
             } text-white`}
-            title={
-              isInProgress ? "Complete" : isCompleted ? "Undo" : "Start"
-            }
+            title={isInProgress ? "Complete" : isCompleted ? "Undo" : "Start"}
           >
             {patient.status === "Waiting" ? <FaPlay /> : <FaCheckCircle />}
           </button>
@@ -193,7 +209,15 @@ export default function Dashboard() {
         <p className="text-lg font-semibold">{patient.name}</p>
         <p className="text-sm opacity-80">{patient.service}</p>
         <p className="mt-2 font-bold">{patient.status}</p>
-        <p className="text-xs opacity-50 mt-1">#{patient.id}</p>
+        <p className="text-xs opacity-50 mt-1">
+          Queue #:{" "}
+          <span className="text-blue-300">
+            {patient.queueNumber ? `#${String(patient.queueNumber).padStart(3, "0")}` : "N/A"}
+          </span>
+        </p>
+        {patient.position && (
+          <p className="text-xs opacity-50 mt-1">Position: {patient.position}</p>
+        )}
       </article>
     );
   }
@@ -216,6 +240,21 @@ export default function Dashboard() {
         <FaHome className="text-red-400" />
         <span className="hidden sm:block font-semibold">Home</span>
       </button>
+
+      {/* Book a Queue button */}
+      {!loading && role === "Patient" && (
+        <button
+          onClick={() => setShowBookingForm(true)}
+          className="fixed bottom-6 right-6 z-50 px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-xl transition font-semibold"
+        >
+          Book a Queue
+        </button>
+      )}
+
+      {/* Booking Form Modal */}
+      {showBookingForm && (
+        <BookingForm onClose={() => setShowBookingForm(false)} />
+      )}
 
       {/* 🌀 Loading Spinner */}
       {loading && (
